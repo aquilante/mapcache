@@ -535,6 +535,7 @@ mapcache_tileset* mapcache_tileset_create(mapcache_context *ctx)
   tileset->store_dimension_assemblies = 1;
   tileset->dimension_assembly_type = MAPCACHE_DIMENSION_ASSEMBLY_NONE;
   tileset->subdimension_read_only = 0;
+  tileset->styles = NULL;
   return tileset;
 }
 
@@ -560,6 +561,7 @@ mapcache_tileset* mapcache_tileset_clone(mapcache_context *ctx, mapcache_tileset
   dst->store_dimension_assemblies = src->store_dimension_assemblies;
   dst->dimension_assembly_type = src->dimension_assembly_type;
   dst->subdimension_read_only = src->subdimension_read_only;
+  dst->styles = src->styles;
   return dst;
 }
 

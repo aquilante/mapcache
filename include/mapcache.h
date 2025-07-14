@@ -110,6 +110,7 @@ typedef struct mapcache_ruleset mapcache_ruleset;
 typedef struct mapcache_context mapcache_context;
 typedef struct mapcache_dimension mapcache_dimension;
 typedef struct mapcache_requested_dimension mapcache_requested_dimension;
+typedef struct mapcache_style mapcache_style;
 typedef struct mapcache_extent mapcache_extent;
 typedef struct mapcache_extent_i mapcache_extent_i;
 typedef struct mapcache_connection_pool mapcache_connection_pool;
@@ -972,6 +973,8 @@ mapcache_source* mapcache_source_mapserver_create(mapcache_context *ctx);
 
 mapcache_source* mapcache_source_dummy_create(mapcache_context *ctx);
 
+char * mapcache_source_wms_get_url(mapcache_source *source);
+
 /**
  * \memberof mapcache_cache_disk
  */
@@ -1251,6 +1254,7 @@ struct mapcache_tileset {
   mapcache_cfg *config;
 
   apr_table_t *metadata;
+  apr_array_header_t *styles;
 };
 
 
@@ -1802,6 +1806,28 @@ mapcache_pooled_connection* mapcache_connection_pool_get_connection(mapcache_con
         void *params);
 void mapcache_connection_pool_invalidate_connection(mapcache_context *ctx, mapcache_pooled_connection *connection);
 void mapcache_connection_pool_release_connection(mapcache_context *ctx, mapcache_pooled_connection *connection);
+
+/**\class mapcache_style
+ * \brief Style for tileset (supportds a single LegendUrl)
+ */
+struct mapcache_style {
+  int isDefault;
+  char *name;
+  char *title;
+  char *abstract;
+  char *legendHref; /* Take precedence on legendHost*/
+  char *legendHost; /* Used in case of missing legendHost */
+  double legendMinScale;
+  double legendMaxScale;
+  char *legendFormat;
+  int legendWidth;
+  int legendHeight;
+  apr_table_t *metadata;
+  mapcache_tileset *tileset;
+};
+
+mapcache_style* mapcache_style_configuration_parse_xml(mapcache_context *ctx, ezxml_t node, mapcache_tileset *tileset);
+
 
 #endif /* MAPCACHE_H_ */
 /* vim: ts=2 sts=2 et sw=2

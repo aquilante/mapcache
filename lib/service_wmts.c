@@ -330,7 +330,6 @@ void _create_capabilities_wmts(mapcache_context *ctx, mapcache_request_get_capab
     const char *title;
     const char *abstract;
     const char *keywords;
-    ezxml_t style;
     char *dimensionstemplate="";
     ezxml_t resourceurl;
 
@@ -377,9 +376,84 @@ void _create_capabilities_wmts(mapcache_context *ctx, mapcache_request_get_capab
 
     ezxml_set_txt(ezxml_add_child(layer,"ows:Identifier",0),tileset->name);
 
-    style = ezxml_add_child(layer,"Style",0);
-    ezxml_set_attr(style,"isDefault","true");
-    ezxml_set_txt(ezxml_add_child(style,"ows:Identifier",0),"default");
+    if(tileset->styles) {
+      for(i=0; i<tileset->dimensions->nelts; i++) {
+        ezxml_t legendtag = NULL;
+        mapcache_style *style = APR_ARRAY_IDX(tileset->styles,i,mapcache_style*);
+        ezxml_t style_node = ezxml_add_child(layer,"Style",0);
+
+        if (style->isDefault){
+          ezxml_set_attr(style_node,"isDefault","true");
+        } else {
+          ezxml_set_attr(style_node,"isDefault","false");
+        }
+        ezxml_set_txt(ezxml_add_child(style_node,"ows:Identifier",0),style->name);
+        if (style->title) {
+           ezxml_set_txt(ezxml_add_child(style_node,"Title",0),style->title);
+        }
+        if (style->abstract) {
+           ezxml_set_txt(ezxml_add_child(style_node,"Abstract",0),style->abstract);
+        }
+
+        if (style->legendHref){
+          legendtag = ezxml_add_child(style_node,"LegendURL",0);
+          ezxml_set_attr(legendtag, "xlink:href", style->legendHref);
+          ezxml_set_attr(legendtag, "format", style->legendFormat);
+        } else if (style->legendHost) {
+          if(style->tileset->source->type == MAPCACHE_SOURCE_WMS) {
+            typedef struct mapcache_source_wms mapcache_source_wms;
+            struct mapcache_source_wms {
+              mapcache_source source;
+              apr_table_t *wms_default_params; /**< default WMS parameters (SERVICE,REQUEST,STYLES,VERSION) */
+            };
+            mapcache_source_wms *wms = (mapcache_source_wms*)style->tileset->source;
+            apr_table_t *params = apr_table_clone(ctx->pool,wms->wms_default_params);
+            char *url = NULL;
+
+            apr_table_set(params,"REQUEST","GetLegendGraphic");
+            apr_table_set(params,"FORMAT",style->legendFormat);
+            if(!apr_table_get(params,"layers")) {
+              apr_table_set(params,"LAYER",style->tileset->name);
+            } else {
+              apr_table_set(params,"LAYER",apr_table_get(params,"layers"));
+              apr_table_unset(params,"layers");
+            }
+            url = mapcache_http_build_url(ctx,style->legendHost,params);            
+            // https://localhost:8081/gwis?format=image/png&request=getlegendgraphic&service=WMS&singletile=false&transparent=true&version=1.1.1&scale=1000000&layer=ecmwf.fwi
+
+            legendtag = ezxml_add_child(style_node,"LegendURL",0);
+            ezxml_set_attr(legendtag, "xlink:href", url);
+            ezxml_set_attr(legendtag, "format", style->legendFormat);
+          }
+        }
+
+        if (legendtag) {
+          char numbuf[50];
+          if(style->legendMinScale){
+            snprintf(numbuf, 50, "%f", style->legendMinScale);
+            ezxml_set_attr(legendtag, "minScaleDenominator", numbuf);
+          }
+          if(style->legendMaxScale){
+            snprintf(numbuf, 50, "%f", style->legendMaxScale);
+            ezxml_set_attr(legendtag, "maxScaleDenominator", numbuf);
+          }
+          if(style->legendWidth){
+            snprintf(numbuf, 50, "%i", style->legendWidth);
+            ezxml_set_attr(legendtag, "width", numbuf);
+          }
+
+          if(style->legendHeight){
+            snprintf(numbuf, 50, "%i", style->legendWidth);
+            ezxml_set_attr(legendtag, "height", numbuf);
+          }
+        }
+      }
+    } else {
+      ezxml_t style_node = ezxml_add_child(layer,"Style",0);
+      ezxml_set_attr(style_node,"isDefault","true");
+      ezxml_set_txt(ezxml_add_child(style_node,"ows:Identifier",0),"default");
+    }
+
 
     if(tileset->format && tileset->format->mime_type)
       ezxml_set_txt(ezxml_add_child(layer,"Format",0),tileset->format->mime_type);

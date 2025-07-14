@@ -60,6 +60,105 @@ void parseMetadata(mapcache_context *ctx, ezxml_t node, apr_table_t *metadata)
   }
 }
 
+void parseStyles(mapcache_context *ctx, ezxml_t node, mapcache_tileset *tileset)
+{
+  ezxml_t style_node;
+  ezxml_t legend_url_node;
+  apr_array_header_t *styles = apr_array_make(ctx->pool,1,sizeof(mapcache_style*));
+
+  for(style_node = ezxml_child(node,"style"); style_node; style_node = style_node->next) {
+    mapcache_style * style = NULL;
+    char *name = (char*)ezxml_attr(style_node,"name");
+    char *title = (char*)ezxml_attr(style_node,"title");
+    char *abstract = (char*)ezxml_attr(style_node,"abstract");
+    char *isdefault = (char*)ezxml_attr(style_node,"default");
+
+    if(!name || !strlen(name)) {
+      ctx->set_error(ctx, 400, "mandatory attribute \"name\" not found in <style>");
+      return;
+    }
+
+    style = apr_pcalloc(ctx->pool, sizeof(mapcache_style));
+
+    style->name = apr_pstrdup(ctx->pool,name);
+
+    if(title && *title) {
+      style->title = apr_pstrdup(ctx->pool,title);
+    }
+
+    if(abstract && *abstract) {
+      style->abstract = apr_pstrdup(ctx->pool,abstract);
+    }
+
+    if(isdefault && *isdefault && !strcasecmp(isdefault,"true")) {
+      style->isDefault = 1;
+    }
+
+    style->tileset = tileset;
+
+    legend_url_node = ezxml_child(style_node,"legendurl");
+    if(legend_url_node){
+      char *href = (char*)ezxml_attr(legend_url_node,"href");
+      char *host = (char*)ezxml_attr(legend_url_node,"host");
+      char *format = (char*)ezxml_attr(legend_url_node,"format");
+      char *minscale = (char*)ezxml_attr(legend_url_node,"minscale");
+      char *maxscale = (char*)ezxml_attr(legend_url_node,"maxscale");
+      char *width = (char*)ezxml_attr(legend_url_node,"width");
+      char *height = (char*)ezxml_attr(legend_url_node,"height");
+
+      if(href && *href) {
+        style->legendHref = apr_pstrdup(ctx->pool,href);
+      }
+
+      if(host && *host) {
+        style->legendHost = apr_pstrdup(ctx->pool,host);
+      }
+
+      if(!(href && *href) && !(host && *host)) {
+        ctx->set_error(ctx, 400, "mandatory attribute \"href\" or \"host\" not found in <legendurl>");
+        return;
+      }
+
+      if(format && *format) {
+        style->legendFormat = apr_pstrdup(ctx->pool,format);
+      } else {
+        style->legendFormat = apr_pstrdup(ctx->pool,"image/png");
+      }
+
+      if(minscale && *minscale) {
+        style->legendMinScale = atof(minscale);
+      } else {
+        style->legendMinScale = 0.0;
+      }
+
+      if(maxscale && *maxscale) {
+        style->legendMaxScale = atof(maxscale);
+      } else {
+        style->legendMaxScale = 0.0;
+      }
+
+      if(width && *width) {
+        style->legendWidth = atof(width);
+      } else {
+        style->legendWidth = 0;
+      }
+
+      if(height && *height) {
+        style->legendHeight = atof(height);
+      } else {
+        style->legendHeight = 0;
+      }
+
+    } else {
+
+    }
+
+    APR_ARRAY_PUSH(styles, mapcache_style*) = style;
+  }
+
+  tileset->styles = styles;
+}
+
 void parseEnvironment(mapcache_context* ctx, ezxml_t node)
 {
     ezxml_t cur_node;
@@ -1178,6 +1277,11 @@ void parseTileset(mapcache_context *ctx, ezxml_t node, mapcache_cfg *config)
                      cur_node->txt);
       return;
     }
+  }
+
+  if ((cur_node = ezxml_child(node,"styles")) != NULL) {
+    parseStyles(ctx, cur_node, tileset);
+    GC_CHECK_ERROR(ctx);
   }
 
   mapcache_tileset_configuration_check(ctx,tileset);
