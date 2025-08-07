@@ -377,7 +377,7 @@ void _create_capabilities_wmts(mapcache_context *ctx, mapcache_request_get_capab
     ezxml_set_txt(ezxml_add_child(layer,"ows:Identifier",0),tileset->name);
 
     if(tileset->styles) {
-      for(i=0; i<tileset->dimensions->nelts; i++) {
+      for(i=0; i<tileset->styles->nelts; i++) {
         ezxml_t legendtag = NULL;
         mapcache_style *style = APR_ARRAY_IDX(tileset->styles,i,mapcache_style*);
         ezxml_t style_node = ezxml_add_child(layer,"Style",0);
