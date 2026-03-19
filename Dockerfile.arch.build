@@ -1,0 +1,44 @@
+ARG ARCH="arm64v8"
+FROM ${ARCH}/ubuntu:24.04
+# FROM mcr.microsoft.com/devcontainers/base:noble
+ARG ARCH="arm64v8"
+ENV ARCH=${ARCH}
+
+RUN apt-get update && \
+    apt-get install -y \
+    g++ \
+    make cmake \
+    apache2-dev apache2-ssl-dev libfcgi-dev libpixman-1-dev libgdal-dev \
+    libmapcache-dev libmapserver-dev libcurl4-openssl-dev libexpat1-dev \
+    libgeos-dev libproj-dev libspatialite-dev libspatialindex-dev \
+    libgeotiff-dev libpng-dev libjpeg-dev libtiff-dev libwebp-dev \
+    libpq-dev libmemcached-dev libhiredis-dev libboost-all-dev \
+    libsqlite3-dev libxml2-dev libxslt1-dev libzip-dev libspatialite-dev
+
+RUN apt-get update && apt-get install -y \
+    libmemcached-dev libproj-dev gdb liblmdb-dev
+
+ENV BUILD_OPTIONS="-DWITH_POSTGRESQL=ON \
+                       -DWITH_BERKELEY_DB=OFF \
+                       -DWITH_LMDB=ON \
+                       -DWITH_MEMCACHE=ON \
+                       -DWITH_REDIS=OFF \
+                       -DWITH_TIFF=OFF \
+                       -DWITH_TIFF_WRITE_SUPPORT=OFF \
+                       -DWITH_GEOTIFF=OFF \
+                       -DWITH_PCRE=OFF \
+                       -DWITH_PCRE2=ON \
+                       -DWITH_MAPSERVER=OFF \
+                       -DWITH_RIAK=OFF \
+                       -DDEBUG=ON \
+                       -DCMAKE_BUILD_TYPE=Debug"
+
+WORKDIR /app/build
+
+COPY build.sh /app/build.sh
+#COPY --from=0 /app/your_binary /app/
+# RUN cd /app/build && pwd && rm CMakeCache.txt || true && \
+#     cmake .. ${BUILD_OPTIONS} && \
+#     make -j$(nproc) && \
+#     cp /usr/local/bin/*mapcache* /output/ 
+# CMD ["bash"]

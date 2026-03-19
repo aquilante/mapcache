@@ -1,0 +1,48 @@
+version: '2'
+
+services:
+  memcache:
+    image: memcached
+    restart: unless-stopped
+    ports:
+      - 11211:11211
+    #command: ["gunicorn", "--bind", "0.0.0.0:8000", "firenews.wsgi"]
+  wms:
+    image: mapcache:latest
+    build:
+      context: .
+      dockerfile: Dockerfile    
+    restart: unless-stopped
+    volumes:
+    - /mnt/nfs1:/mnt/nfs
+    - /mnt/efs:/mnt/efs
+    - /home/alfredo/Progz/JRC/mapcache/apache/000-default.conf:/etc/apache2/sites-enabled/000-default.conf 
+    - /home/alfredo/Progz/JRC/mapcache/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf 
+    - /home/alfredo/Progz/JRC/mapcache/apache/mapcache_gwis.xml:/mnt/nfs/mapfiles/mapcache_gwis.xml 
+    ports:
+      - 8081:8081
+    environment:
+      # - MS_ERRORFILE=/var/log/mapserv/error.log
+      - MS_ERRORFILE=stdout
+      - MAPSERVER_CONFIG_FILE=/mnt/nfs/mapfiles/mapserver.conf 
+      - MS_DEBUGLEVEL=5 
+      - CPL_DEBUG=ON
+      - CPL_TIMESTAMP=ON
+      - CPL_CURL_VERBOSE=ON
+      - PROJ_DEBUG=ON
+  maproxy:
+    image: maproxy:1.0.13
+    restart: unless-stopped
+    environment:
+      MAPROXY_SERVER: ":8080"
+      WMS_SERVER: "http://wms:8081"
+      MEMCACHE_SERVER: "memcache:11211"      
+    ports:
+      - 8085:8080
+    depends_on:
+      - "memcache"
+      - "wms"
+    command: ["/maproxy"] #, "-addr", ":8080", "-memc", "memcache:11211"]
+
+      
+
